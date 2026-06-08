@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>2025 Bahrain GP — VER Strategy Replay</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d1a;color:#e0e0e0;font-family:'Segoe UI',Arial,sans-serif;padding:20px;}
+h1{text-align:center;font-size:1.4em;color:#fff;margin-bottom:4px;letter-spacing:1px;}
+.subtitle{text-align:center;font-size:.82em;color:#aaa;margin-bottom:16px;}
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:1100px;margin:0 auto;}
+.panel{background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:14px;}
+.panel-title{font-size:.75em;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+#circuit-svg{width:100%;height:300px;}
+.pred-panel{background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;}
+.lap-header{display:flex;justify-content:space-between;align-items:center;}
+.lap-num{font-size:1.9em;font-weight:bold;color:#fff;}
+.lap-total{font-size:.85em;color:#888;}
+.badge{padding:4px 12px;border-radius:16px;font-size:.82em;font-weight:bold;background:#2a2a4a;color:#aaa;}
+.badge.warn{background:#ff8c0033;color:#FFA500;border:1px solid #FFA500;}
+.badge.danger{background:#e8002d33;color:#E8002D;border:1px solid #E8002D;}
+.badge.ok{background:#00c85133;color:#00C851;border:1px solid #00C851;}
+.prob-label{display:flex;justify-content:space-between;margin-bottom:5px;font-size:.88em;}
+.prob-label span:last-child{font-weight:bold;font-size:1.05em;}
+.gauge-track{height:20px;background:#2a2a4a;border-radius:10px;overflow:hidden;}
+.gauge-fill{height:100%;border-radius:10px;transition:width .4s ease,background .4s ease;}
+.features-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.feat-card{background:#12122a;border:1px solid #2a2a4a;border-radius:7px;padding:9px 11px;}
+.feat-name{font-size:.7em;color:#888;margin-bottom:3px;}
+.feat-val{font-size:1.05em;font-weight:bold;color:#fff;}
+.feat-bar{height:3px;background:#2a2a4a;border-radius:2px;margin-top:4px;overflow:hidden;}
+.feat-bar-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+/* Model1 결과 배너 */
+.m1-banner{border-radius:8px;padding:10px 14px;text-align:center;font-size:.92em;font-weight:bold;background:#2a2a4a;color:#888;transition:all .3s ease;min-height:42px;display:flex;align-items:center;justify-content:center;}
+.m1-banner.predicting{background:#ff8c0022;color:#FFA500;border:1px solid #FFA500;}
+.m1-banner.correct{background:#00c85122;color:#00C851;border:1px solid #00C851;animation:pulse .8s ease;}
+.m1-banner.missed{background:#e8002d22;color:#E8002D;border:1px solid #E8002D;}
+/* Model2 패널 */
+.m2-panel{max-width:1100px;margin:12px auto 0;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:14px;}
+.m2-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;}
+.m2-card{background:#12122a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 14px;text-align:center;}
+.m2-card-title{font-size:.75em;color:#888;margin-bottom:6px;}
+.m2-card-val{font-size:1.5em;font-weight:bold;}
+.m2-card-sub{font-size:.75em;color:#888;margin-top:3px;}
+.m2-hidden{opacity:.3;}
+/* 타임라인 */
+.timeline-panel{max-width:1100px;margin:12px auto 0;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:14px;}
+#timeline-svg{width:100%;height:90px;}
+/* 컨트롤 */
+.controls{max-width:1100px;margin:12px auto 0;display:flex;align-items:center;gap:10px;}
+button{background:#2a2a4a;color:#fff;border:1px solid #3a3a6a;border-radius:7px;padding:7px 18px;cursor:pointer;font-size:.88em;transition:background .2s;}
+button:hover{background:#3a3a6a;}
+button.primary{background:#E8002D;border-color:#E8002D;}
+button.primary:hover{background:#c0001f;}
+#lap-slider{flex:1;accent-color:#E8002D;}
+.slider-label{font-size:.78em;color:#888;min-width:55px;}
+@keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.03);}100%{transform:scale(1);}}
+</style>
+</head>
+<body>
+<h1>🏎 2025 Bahrain Grand Prix — VER Strategy Replay</h1>
+<p class="subtitle">
+  Model 1 (RF): 다음 랩 피트 예측 &nbsp;|&nbsp;
+  Model 2 (Ridge): 피트 후 랩타임 개선량 예측
+</p>
+
+<!-- 메인 그리드 -->
+<div class="main-grid">
+  <!-- 서킷 미니맵 -->
+  <div class="panel">
+    <div class="panel-title">Bahrain International Circuit — VER Position</div>
+    <svg id="circuit-svg" viewBox="0 0 400 320">
+      <polyline id="track-line" fill="none" stroke="#3a3a6a" stroke-width="8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+      <line id="sf-line" x1="0" y1="0" x2="0" y2="0" stroke="#fff" stroke-width="2"/>
+      <text id="sf-text" x="0" y="0" fill="#fff" font-size="10">S/F</text>
+      <g id="pit-markers"></g>
+      <circle id="car-dot" cx="200" cy="160" r="10" fill="#3B67B2" stroke="#fff" stroke-width="2">
+        <animate attributeName="r" values="10;12;10" dur="1s" repeatCount="indefinite"/>
+      </circle>
+      <text id="car-label" x="200" y="142" text-anchor="middle"
+            fill="#fff" font-size="12" font-weight="bold">VER</text>
+      <g id="corner-labels" fill="#555" font-size="8"></g>
+    </svg>
+  </div>
+
+  <!-- 예측 패널 -->
+  <div class="pred-panel">
+    <div class="lap-header">
+      <div>
+        <div class="panel-title">Current Lap</div>
+        <div>
+          <span class="lap-num" id="lap-display">-</span>
+          <span class="lap-total"> / 57</span>
+        </div>
+      </div>
+      <div id="status-badge" class="badge">대기중</div>
+    </div>
+
+    <!-- Model1 피트 예측 확률 -->
+    <div>
+      <div class="prob-label">
+        <span>🔴 다음 랩 피트 예측 확률 (Model 1)</span>
+        <span id="prob-text">0%</span>
+      </div>
+      <div class="gauge-track">
+        <div class="gauge-fill" id="gauge-fill" style="width:0%;background:#3266AD;"></div>
+      </div>
+    </div>
+
+    <!-- Feature 카드 -->
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-name">🔧 타이어 종류</div>
+        <div class="feat-val" id="compound-val">-</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">📊 타이어 마모율</div>
+        <div class="feat-val" id="wear-val">0.00</div>
+        <div class="feat-bar">
+          <div class="feat-bar-fill" id="wear-bar" style="width:0%;"></div>
+        </div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">⏱ 직전 랩타임</div>
+        <div class="feat-val" id="laptime-val">-</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">📍 앞차 간격</div>
+        <div class="feat-val" id="gap-val">-</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">🏁 현재 순위</div>
+        <div class="feat-val" id="pos-val">-</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">🔁 누적 피트</div>
+        <div class="feat-val" id="pitstop-val">0회</div>
+      </div>
+    </div>
+
+    <!-- Model1 결과 배너 -->
+    <div class="m1-banner" id="m1-banner">대기 중...</div>
+  </div>
+</div>
+
+<!-- Model2 패널 -->
+<div class="m2-panel">
+  <div class="panel-title">📈 Model 2 (Ridge) — 피트스탑 후 랩타임 개선량 예측</div>
+  <div class="m2-grid">
+    <div class="m2-card" id="m2-card-pred">
+      <div class="m2-card-title">예측 개선량</div>
+      <div class="m2-card-val" id="m2-pred-val" style="color:#3266AD;">—</div>
+      <div class="m2-card-sub">피트 후 랩타임이 이만큼 빨라질 것</div>
+    </div>
+    <div class="m2-card" id="m2-card-actual">
+      <div class="m2-card-title">실제 개선량</div>
+      <div class="m2-card-val" id="m2-actual-val" style="color:#00C851;">—</div>
+      <div class="m2-card-sub">피트 전후 실제 랩타임 차이</div>
+    </div>
+    <div class="m2-card" id="m2-card-error">
+      <div class="m2-card-title">예측 오차 (MAE)</div>
+      <div class="m2-card-val" id="m2-error-val" style="color:#FFA500;">—</div>
+      <div class="m2-card-sub">|예측 - 실제| (초)</div>
+    </div>
+  </div>
+  <p id="m2-hint" style="text-align:center;color:#555;font-size:.8em;margin-top:8px;">
+    ← 피트스탑 발생 랩에서 Model 2 예측 결과가 표시됩니다
+  </p>
+</div>
+
+<!-- 타임라인 -->
+<div class="timeline-panel">
+  <div class="panel-title">전체 경기 타임라인 — 다음 랩 피트 예측 확률 &amp; 실제 피트</div>
+  <svg id="timeline-svg" viewBox="0 0 1060 90"></svg>
+</div>
+
+<!-- 컨트롤 -->
+<div class="controls">
+  <button onclick="prevLap()">◀ 이전</button>
+  <button class="primary" id="play-btn" onclick="togglePlay()">▶ 재생</button>
+  <button onclick="nextLap()">다음 ▶</button>
+  <input type="range" id="lap-slider" min="0" max="0" value="0" oninput="onSlider(this.value)">
+  <span class="slider-label" id="slider-label">-</span>
+  <button onclick="resetAnim()">↺ 처음</button>
+</div>
+
+<script>
+const LAP_DATA       = [{"lap": 1, "pit_prob": 0.641, "pit_next_lap": 1, "compound": 1, "wear": 0.357, "laptime": 103.877, "gap": 0.691, "position": 8, "pitstop": 0, "track_x": 0.5199, "track_y": 0.116, "is_actual_pit": false, "next_is_pit": false, "m2_pred": 4.56, "m2_actual": 4.98}, {"lap": 2, "pit_prob": 0.626, "pit_next_lap": 1, "compound": 1, "wear": 0.447, "laptime": 103.877, "gap": 0.163, "position": 8, "pitstop": 0, "track_x": 0.5397, "track_y": 0.1121, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 3, "pit_prob": 0.54, "pit_next_lap": 1, "compound": 1, "wear": 0.536, "laptime": 98.403, "gap": 0.056, "position": 8, "pitstop": 0, "track_x": 0.5596, "track_y": 0.11, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 4, "pit_prob": 0.583, "pit_next_lap": 1, "compound": 1, "wear": 0.625, "laptime": 98.475, "gap": 0.105, "position": 8, "pitstop": 0, "track_x": 0.5795, "track_y": 0.11, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 5, "pit_prob": 0.316, "pit_next_lap": 1, "compound": 1, "wear": 0.715, "laptime": 98.549, "gap": 2.261, "position": 7, "pitstop": 0, "track_x": 0.5994, "track_y": 0.11, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 6, "pit_prob": 0.275, "pit_next_lap": 1, "compound": 1, "wear": 0.804, "laptime": 98.76, "gap": 0.43, "position": 7, "pitstop": 0, "track_x": 0.6192, "track_y": 0.1138, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 7, "pit_prob": 0.276, "pit_next_lap": 1, "compound": 1, "wear": 0.893, "laptime": 98.593, "gap": 0.401, "position": 7, "pitstop": 0, "track_x": 0.6391, "track_y": 0.1178, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 8, "pit_prob": 0.284, "pit_next_lap": 1, "compound": 1, "wear": 0.983, "laptime": 98.929, "gap": 0.521, "position": 7, "pitstop": 0, "track_x": 0.659, "track_y": 0.1236, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 9, "pit_prob": 0.441, "pit_next_lap": 1, "compound": 1, "wear": 1.072, "laptime": 99.385, "gap": 1.275, "position": 7, "pitstop": 0, "track_x": 0.6788, "track_y": 0.1315, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 10, "pit_prob": 0.555, "pit_next_lap": 1, "compound": 1, "wear": 1.162, "laptime": 99.67, "gap": 3.996, "position": 7, "pitstop": 0, "track_x": 0.6987, "track_y": 0.1395, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 12, "pit_prob": 0.136, "pit_next_lap": 1, "compound": 3, "wear": 0.118, "laptime": 119.918, "gap": 0.809, "position": 16, "pitstop": 1, "track_x": 0.7308, "track_y": 0.1631, "is_actual_pit": true, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 13, "pit_prob": 0.241, "pit_next_lap": 1, "compound": 3, "wear": 0.178, "laptime": 97.204, "gap": 21.386, "position": 13, "pitstop": 1, "track_x": 0.745, "track_y": 0.1767, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 14, "pit_prob": 0.267, "pit_next_lap": 1, "compound": 3, "wear": 0.237, "laptime": 98.327, "gap": 0.355, "position": 12, "pitstop": 1, "track_x": 0.7569, "track_y": 0.1926, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 15, "pit_prob": 0.431, "pit_next_lap": 1, "compound": 3, "wear": 0.296, "laptime": 98.087, "gap": 0.11, "position": 10, "pitstop": 1, "track_x": 0.7688, "track_y": 0.2085, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 16, "pit_prob": 0.433, "pit_next_lap": 1, "compound": 3, "wear": 0.355, "laptime": 98.287, "gap": 0.234, "position": 9, "pitstop": 1, "track_x": 0.7772, "track_y": 0.2279, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 17, "pit_prob": 0.583, "pit_next_lap": 1, "compound": 3, "wear": 0.414, "laptime": 99.303, "gap": 0.534, "position": 8, "pitstop": 1, "track_x": 0.7851, "track_y": 0.2478, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 18, "pit_prob": 0.207, "pit_next_lap": 1, "compound": 3, "wear": 0.474, "laptime": 98.408, "gap": 0.188, "position": 7, "pitstop": 1, "track_x": 0.7915, "track_y": 0.2692, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 19, "pit_prob": 0.217, "pit_next_lap": 1, "compound": 3, "wear": 0.533, "laptime": 98.553, "gap": 0.184, "position": 7, "pitstop": 1, "track_x": 0.7955, "track_y": 0.2931, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 20, "pit_prob": 0.572, "pit_next_lap": 1, "compound": 3, "wear": 0.592, "laptime": 98.515, "gap": 1.161, "position": 8, "pitstop": 1, "track_x": 0.7995, "track_y": 0.3169, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 21, "pit_prob": 0.639, "pit_next_lap": 1, "compound": 3, "wear": 0.651, "laptime": 100.427, "gap": 0.025, "position": 8, "pitstop": 1, "track_x": 0.8, "track_y": 0.3477, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 22, "pit_prob": 0.645, "pit_next_lap": 1, "compound": 3, "wear": 0.71, "laptime": 98.948, "gap": 0.179, "position": 9, "pitstop": 1, "track_x": 0.8, "track_y": 0.3795, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 23, "pit_prob": 0.707, "pit_next_lap": 1, "compound": 3, "wear": 0.77, "laptime": 100.076, "gap": 0.409, "position": 9, "pitstop": 1, "track_x": 0.7986, "track_y": 0.4099, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 24, "pit_prob": 0.703, "pit_next_lap": 1, "compound": 3, "wear": 0.829, "laptime": 98.433, "gap": 0.551, "position": 9, "pitstop": 1, "track_x": 0.7946, "track_y": 0.4377, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 25, "pit_prob": 0.658, "pit_next_lap": 1, "compound": 3, "wear": 0.888, "laptime": 98.871, "gap": 0.169, "position": 9, "pitstop": 1, "track_x": 0.7906, "track_y": 0.4655, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 26, "pit_prob": 0.79, "pit_next_lap": 1, "compound": 3, "wear": 0.947, "laptime": 99.492, "gap": 3.276, "position": 11, "pitstop": 1, "track_x": 0.78, "track_y": 0.49, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 28, "pit_prob": 0.076, "pit_next_lap": 0, "compound": 2, "wear": 0.153, "laptime": 120.045, "gap": 3.678, "position": 17, "pitstop": 2, "track_x": 0.7549, "track_y": 0.5351, "is_actual_pit": true, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 29, "pit_prob": 0.137, "pit_next_lap": 0, "compound": 2, "wear": 0.229, "laptime": 97.09, "gap": 3.569, "position": 14, "pitstop": 2, "track_x": 0.739, "track_y": 0.551, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 30, "pit_prob": 0.234, "pit_next_lap": 1, "compound": 2, "wear": 0.306, "laptime": 96.167, "gap": 0.893, "position": 14, "pitstop": 2, "track_x": 0.7231, "track_y": 0.5669, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 31, "pit_prob": 0.233, "pit_next_lap": 1, "compound": 2, "wear": 0.382, "laptime": 96.694, "gap": 1.358, "position": 14, "pitstop": 2, "track_x": 0.704, "track_y": 0.5796, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 32, "pit_prob": 0.302, "pit_next_lap": 1, "compound": 2, "wear": 0.458, "laptime": 98.04, "gap": 2.124, "position": 13, "pitstop": 2, "track_x": 0.6841, "track_y": 0.5915, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 33, "pit_prob": 0.508, "pit_next_lap": 1, "compound": 2, "wear": 0.535, "laptime": 124.237, "gap": 0.984, "position": 8, "pitstop": 2, "track_x": 0.6631, "track_y": 0.6023, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 34, "pit_prob": 0.542, "pit_next_lap": 1, "compound": 2, "wear": 0.611, "laptime": 132.451, "gap": 5.427, "position": 8, "pitstop": 2, "track_x": 0.6392, "track_y": 0.6103, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 35, "pit_prob": 0.61, "pit_next_lap": 1, "compound": 2, "wear": 0.688, "laptime": 120.369, "gap": 1.505, "position": 8, "pitstop": 2, "track_x": 0.6154, "track_y": 0.6182, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 36, "pit_prob": 0.526, "pit_next_lap": 1, "compound": 2, "wear": 0.764, "laptime": 139.15, "gap": 0.125, "position": 8, "pitstop": 2, "track_x": 0.5915, "track_y": 0.6231, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 37, "pit_prob": 0.619, "pit_next_lap": 1, "compound": 2, "wear": 0.84, "laptime": 98.622, "gap": 0.233, "position": 8, "pitstop": 2, "track_x": 0.5677, "track_y": 0.6271, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 38, "pit_prob": 0.34, "pit_next_lap": 1, "compound": 2, "wear": 0.917, "laptime": 97.345, "gap": 1.91, "position": 7, "pitstop": 2, "track_x": 0.5438, "track_y": 0.63, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 39, "pit_prob": 0.398, "pit_next_lap": 1, "compound": 2, "wear": 0.993, "laptime": 96.171, "gap": 0.871, "position": 7, "pitstop": 2, "track_x": 0.52, "track_y": 0.63, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 40, "pit_prob": 0.419, "pit_next_lap": 1, "compound": 2, "wear": 1.07, "laptime": 96.67, "gap": 0.421, "position": 7, "pitstop": 2, "track_x": 0.4962, "track_y": 0.63, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 41, "pit_prob": 0.432, "pit_next_lap": 1, "compound": 2, "wear": 1.146, "laptime": 97.059, "gap": 0.525, "position": 7, "pitstop": 2, "track_x": 0.4723, "track_y": 0.6271, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 42, "pit_prob": 0.404, "pit_next_lap": 1, "compound": 2, "wear": 1.223, "laptime": 96.922, "gap": 0.553, "position": 7, "pitstop": 2, "track_x": 0.4485, "track_y": 0.6231, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 43, "pit_prob": 0.446, "pit_next_lap": 1, "compound": 2, "wear": 1.299, "laptime": 97.163, "gap": 0.608, "position": 7, "pitstop": 2, "track_x": 0.4246, "track_y": 0.6182, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 44, "pit_prob": 0.453, "pit_next_lap": 1, "compound": 2, "wear": 1.375, "laptime": 97.095, "gap": 0.917, "position": 7, "pitstop": 2, "track_x": 0.4008, "track_y": 0.6103, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 45, "pit_prob": 0.477, "pit_next_lap": 1, "compound": 2, "wear": 1.452, "laptime": 97.038, "gap": 0.254, "position": 7, "pitstop": 2, "track_x": 0.3769, "track_y": 0.6023, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 46, "pit_prob": 0.492, "pit_next_lap": 1, "compound": 2, "wear": 1.528, "laptime": 97.385, "gap": 0.309, "position": 7, "pitstop": 2, "track_x": 0.3559, "track_y": 0.5915, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 47, "pit_prob": 0.465, "pit_next_lap": 1, "compound": 2, "wear": 1.605, "laptime": 97.351, "gap": 0.473, "position": 7, "pitstop": 2, "track_x": 0.336, "track_y": 0.5796, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 48, "pit_prob": 0.501, "pit_next_lap": 1, "compound": 2, "wear": 1.681, "laptime": 97.369, "gap": 0.39, "position": 7, "pitstop": 2, "track_x": 0.3162, "track_y": 0.5669, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 49, "pit_prob": 0.38, "pit_next_lap": 1, "compound": 2, "wear": 1.757, "laptime": 97.484, "gap": 0.186, "position": 7, "pitstop": 2, "track_x": 0.2963, "track_y": 0.551, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 50, "pit_prob": 0.386, "pit_next_lap": 1, "compound": 2, "wear": 1.834, "laptime": 97.62, "gap": 0.507, "position": 7, "pitstop": 2, "track_x": 0.2764, "track_y": 0.5351, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 51, "pit_prob": 0.45, "pit_next_lap": 1, "compound": 2, "wear": 1.91, "laptime": 97.684, "gap": 0.257, "position": 7, "pitstop": 2, "track_x": 0.2592, "track_y": 0.5165, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 52, "pit_prob": 0.377, "pit_next_lap": 1, "compound": 2, "wear": 1.987, "laptime": 98.075, "gap": 0.33, "position": 7, "pitstop": 2, "track_x": 0.2433, "track_y": 0.4967, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 53, "pit_prob": 0.429, "pit_next_lap": 1, "compound": 2, "wear": 2.063, "laptime": 98.065, "gap": 0.003, "position": 7, "pitstop": 2, "track_x": 0.2281, "track_y": 0.4768, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}, {"lap": 54, "pit_prob": 0.38, "pit_next_lap": 1, "compound": 2, "wear": 2.139, "laptime": 98.435, "gap": 0.015, "position": 7, "pitstop": 2, "track_x": 0.2162, "track_y": 0.4569, "is_actual_pit": false, "next_is_pit": false, "m2_pred": null, "m2_actual": null}];
+const ACTUAL_PIT_LAPS= [12, 28];
+const W=400, H=320, PAD=28;
+
+// Bahrain 트랙 좌표
+const TP=[
+  [.50,.12],[.55,.11],[.60,.11],[.65,.12],[.70,.14],[.74,.17],[.77,.21],
+  [.79,.26],[.80,.32],[.80,.40],[.79,.47],[.76,.53],[.72,.57],[.67,.60],
+  [.61,.62],[.55,.63],[.49,.63],[.43,.62],[.37,.60],[.32,.57],[.27,.53],
+  [.23,.48],[.20,.43],[.18,.37],[.18,.30],[.20,.24],[.23,.19],[.28,.16],
+  [.33,.13],[.39,.12],[.44,.11],[.50,.12]
+];
+const CL=[
+  {n:'T1',x:.74,y:.17},{n:'T4',x:.80,y:.40},
+  {n:'T8',x:.61,y:.62},{n:'T11',x:.27,y:.53},
+  {n:'T13',x:.20,y:.37},{n:'T15',x:.33,y:.13}
+];
+const CM={1:'SOFT 🔴',2:'MEDIUM 🟡',3:'HARD ⚪',4:'WET/INTER 🔵'};
+const CC={1:'#E8002D',2:'#FFF200',3:'#CCCCCC',4:'#00ADEF'};
+
+function sv(nx,ny){return[PAD+nx*(W-2*PAD),PAD+ny*(H-2*PAD)];}
+
+function initCircuit(){
+  const pts=TP.map(([x,y])=>sv(x,y).join(',')).join(' ');
+  document.getElementById('track-line').setAttribute('points',pts);
+  const[sx,sy]=sv(.50,.12);
+  const sf=document.getElementById('sf-line');
+  sf.setAttribute('x1',sx-8);sf.setAttribute('y1',sy-10);
+  sf.setAttribute('x2',sx+8);sf.setAttribute('y2',sy+10);
+  const st=document.getElementById('sf-text');
+  st.setAttribute('x',sx+12);st.setAttribute('y',sy+4);
+  const cg=document.getElementById('corner-labels');
+  CL.forEach(({n,x,y})=>{
+    const[cx,cy]=sv(x,y);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',cx);t.setAttribute('y',cy);
+    t.setAttribute('text-anchor','middle');t.textContent=n;
+    cg.appendChild(t);
+  });
+  // 실제 피트 위치 마커
+  const pmg=document.getElementById('pit-markers');
+  ACTUAL_PIT_LAPS.forEach(lap=>{
+    const d=LAP_DATA.find(r=>r.lap===lap);if(!d)return;
+    const[mx,my]=sv(d.track_x,d.track_y);
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',mx);c.setAttribute('cy',my);c.setAttribute('r',12);
+    c.setAttribute('fill','none');c.setAttribute('stroke','#00C851');
+    c.setAttribute('stroke-width','2.5');c.setAttribute('stroke-dasharray','4,2');
+    pmg.appendChild(c);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',mx);t.setAttribute('y',my-16);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','#00C851');t.setAttribute('font-size','9');
+    t.textContent='PIT Lap'+lap;pmg.appendChild(t);
+  });
+}
+
+function initTimeline(){
+  const svg=document.getElementById('timeline-svg');
+  const WTL=1060,HTL=90,pL=30,pR=20,pT=15,pB=25;
+  const dW=WTL-pL-pR,dH=HTL-pT-pB,n=LAP_DATA.length;
+  LAP_DATA.forEach((d,i)=>{
+    const x=pL+(i/(n-1))*dW,bH=d.pit_prob*dH,y=pT+dH-bH;
+    const col=d.pit_prob>.7?'#E8002D':d.pit_prob>.4?'#FFA500':'#3266AD';
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',x-3);r.setAttribute('y',y);
+    r.setAttribute('width',6);r.setAttribute('height',bH);
+    r.setAttribute('fill',col);r.setAttribute('opacity','.75');
+    r.setAttribute('rx','2');svg.appendChild(r);
+  });
+  ACTUAL_PIT_LAPS.forEach(lap=>{
+    const idx=LAP_DATA.findIndex(d=>d.lap===lap);if(idx<0)return;
+    const x=pL+(idx/(n-1))*dW;
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x);l.setAttribute('y1',pT);
+    l.setAttribute('x2',x);l.setAttribute('y2',pT+dH);
+    l.setAttribute('stroke','#00C851');l.setAttribute('stroke-width','2');
+    svg.appendChild(l);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x);t.setAttribute('y',pT+dH+12);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','#00C851');t.setAttribute('font-size','9');
+    t.textContent='Lap'+lap;svg.appendChild(t);
+  });
+  const cur=document.createElementNS('http://www.w3.org/2000/svg','line');
+  cur.setAttribute('id','tl-cursor');cur.setAttribute('y1',pT);
+  cur.setAttribute('y2',pT+dH);cur.setAttribute('stroke','#fff');
+  cur.setAttribute('stroke-width','1.5');svg.appendChild(cur);
+  LAP_DATA.forEach((d,i)=>{
+    if(d.lap%10!==0)return;
+    const x=pL+(i/(n-1))*dW;
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x);t.setAttribute('y',HTL-6);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','#666');t.setAttribute('font-size','9');
+    t.textContent='Lap '+d.lap;svg.appendChild(t);
+  });
+}
+
+// Model2 카드 업데이트
+let lastM2Lap = null;
+function updateM2(d){
+  // 피트 발생 랩이거나 직전 랩에 m2 데이터 있으면 표시
+  if(d.m2_pred !== null && d.m2_pred !== undefined){
+    lastM2Lap = d;
+  }
+  if(d.is_actual_pit && lastM2Lap){
+    const pred   = lastM2Lap.m2_pred;
+    const actual = d.m2_actual || lastM2Lap.m2_actual;
+    const err    = actual !== null ? Math.abs(pred - actual).toFixed(2) : null;
+    const sign   = pred >= 0 ? '+' : '';
+
+    document.getElementById('m2-pred-val').textContent   = sign + pred.toFixed(2) + 's';
+    document.getElementById('m2-pred-val').style.color   = pred >= 0 ? '#00C851' : '#E8002D';
+    document.getElementById('m2-actual-val').textContent = actual !== null ? (actual>=0?'+':'')+actual.toFixed(2)+'s' : '—';
+    document.getElementById('m2-actual-val').style.color = actual >= 0 ? '#00C851' : '#E8002D';
+    document.getElementById('m2-error-val').textContent  = err !== null ? err + 's' : '—';
+    document.getElementById('m2-hint').textContent =
+      `Lap ${d.lap} 피트 — 예측 ${sign+pred.toFixed(2)}s / 실제 ${actual !== null ? (actual>=0?'+':'')+actual.toFixed(2)+'s' : '—'}`;
+  }
+}
+
+function updateDisplay(idx){
+  const d=LAP_DATA[idx],n=LAP_DATA.length,prob=d.pit_prob;
+  document.getElementById('lap-display').textContent = d.lap;
+  document.getElementById('slider-label').textContent = 'Lap '+d.lap;
+  document.getElementById('lap-slider').value = idx;
+
+  // 게이지
+  const pct=Math.round(prob*100);
+  const col=prob>.7?'#E8002D':prob>.4?'#FFA500':'#3266AD';
+  document.getElementById('prob-text').textContent = pct+'%';
+  document.getElementById('prob-text').style.color = col;
+  document.getElementById('gauge-fill').style.width = pct+'%';
+  document.getElementById('gauge-fill').style.background = col;
+
+  // 상태 배지
+  const badge=document.getElementById('status-badge');
+  if(prob>.7){badge.textContent='⚠️ 다음 랩 피트 강력 권고';badge.className='badge danger';}
+  else if(prob>.4){badge.textContent='🟡 다음 랩 피트 검토';badge.className='badge warn';}
+  else{badge.textContent='✅ 정상 주행';badge.className='badge ok';}
+
+  // 피처 카드
+  document.getElementById('compound-val').textContent = CM[d.compound]||'-';
+  document.getElementById('compound-val').style.color = CC[d.compound]||'#fff';
+  document.getElementById('wear-val').textContent = d.wear.toFixed(2);
+  const wp=Math.min(d.wear/3*100,100),wc=d.wear>1.5?'#E8002D':d.wear>1.0?'#FFA500':'#00C851';
+  document.getElementById('wear-bar').style.width = wp+'%';
+  document.getElementById('wear-bar').style.background = wc;
+  document.getElementById('laptime-val').textContent = d.laptime.toFixed(3)+'s';
+  document.getElementById('gap-val').textContent = d.gap.toFixed(3)+'s';
+  document.getElementById('pos-val').textContent = 'P'+d.position;
+  document.getElementById('pitstop-val').textContent = d.pitstop+'회';
+
+  // ── Model1 결과 배너 (핵심 수정) ──
+  // pit_next_lap = "다음 랩" 예측이므로:
+  // - 현재 랩에서 prob>0.5: "다음 랩 피트 예측 중"
+  // - 다음 랩이 실제 피트: "예측 성공" (이전 랩에서 높은 확률을 보였으면)
+  // - 현재 랩이 실제 피트인데 이전 랩 prob 낮았으면: "예측 실패"
+  const banner=document.getElementById('m1-banner');
+  const isPred = prob > 0.5;
+  const isActualPit = d.is_actual_pit;  // 이 랩이 실제 피트 진입
+  const nextIsPit   = d.next_is_pit;    // 다음 랩이 실제 피트
+
+  if(isActualPit){
+    // 피트 발생한 랩 → 이전 랩 예측 결과 표시
+    const prevIdx = idx > 0 ? idx - 1 : 0;
+    const prevProb = LAP_DATA[prevIdx].pit_prob;
+    if(prevProb > 0.5){
+      banner.textContent = '🎯 예측 성공! — Lap '+(d.lap-1)+'에서 이 피트를 예측했습니다!';
+      banner.className = 'm1-banner correct';
+    } else {
+      banner.textContent = '❌ 예측 실패 — 피트가 발생했지만 직전 랩에서 예측하지 못함';
+      banner.className = 'm1-banner missed';
+    }
+  } else if(nextIsPit && isPred){
+    banner.textContent = `⚠️ 다음 랩(Lap ${d.lap+1}) 피트 예측 중! (확률 ${pct}%)`;
+    banner.className = 'm1-banner predicting';
+  } else if(isPred){
+    banner.textContent = `🔴 다음 랩 피트 권고 (확률 ${pct}%) — 대기 중...`;
+    banner.className = 'm1-banner predicting';
+  } else {
+    banner.textContent = '— 정상 주행 중';
+    banner.className = 'm1-banner';
+  }
+
+  // Model2 업데이트
+  updateM2(d);
+
+  // 차량 위치
+  const[cx,cy]=sv(d.track_x,d.track_y);
+  document.getElementById('car-dot').setAttribute('cx',cx);
+  document.getElementById('car-dot').setAttribute('cy',cy);
+  document.getElementById('car-label').setAttribute('x',cx);
+  document.getElementById('car-label').setAttribute('y',cy-14);
+  document.getElementById('car-dot').setAttribute('fill',CC[d.compound]||'#3B67B2');
+
+  // 타임라인 커서
+  const WTL=1060,pL=30,pR=20,tlX=pL+(idx/(n-1))*(WTL-pL-pR);
+  const cur=document.getElementById('tl-cursor');
+  cur.setAttribute('x1',tlX);cur.setAttribute('x2',tlX);
+}
+
+let curIdx=0,playing=false,timer=null;
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('play-btn').textContent=playing?'⏸ 일시정지':'▶ 재생';
+  if(playing){
+    timer=setInterval(()=>{
+      if(curIdx<LAP_DATA.length-1){curIdx++;updateDisplay(curIdx);}
+      else{clearInterval(timer);playing=false;document.getElementById('play-btn').textContent='▶ 재생';}
+    },900);
+  }else clearInterval(timer);
+}
+function prevLap(){clearInterval(timer);playing=false;document.getElementById('play-btn').textContent='▶ 재생';if(curIdx>0){curIdx--;updateDisplay(curIdx);}}
+function nextLap(){clearInterval(timer);playing=false;document.getElementById('play-btn').textContent='▶ 재생';if(curIdx<LAP_DATA.length-1){curIdx++;updateDisplay(curIdx);}}
+function onSlider(v){clearInterval(timer);playing=false;document.getElementById('play-btn').textContent='▶ 재생';curIdx=parseInt(v);updateDisplay(curIdx);}
+function resetAnim(){clearInterval(timer);playing=false;document.getElementById('play-btn').textContent='▶ 재생';curIdx=0;updateDisplay(0);lastM2Lap=null;}
+document.getElementById('lap-slider').max=LAP_DATA.length-1;
+initCircuit();initTimeline();updateDisplay(0);
+</script>
+</body>
+</html>
